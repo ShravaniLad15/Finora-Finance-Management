@@ -4,6 +4,9 @@ import { Env } from "./config/env.config";
 import cors from "cors";
 import { HTTPSTATUS } from "./config/http.config";
 import { errorHandler } from "./middleware/errorHandler.middleware";
+import { BadRequestException } from "./utils/app-error";
+import { asyncHandler } from "./middleware/asyncHandler.middleware";
+import connectDatabase from "./config/database.config";
 
 const app = express();
 const BASE_PATH = Env.BASE_PATH;
@@ -18,17 +21,19 @@ app.use(
   })
 );
 
-app.get("/", (req: Request, res: Response, next: NextFunction ) => {
-  throw new Error("This is test error");
+app.get("/",
+  asyncHandler(async (req: Request, res: Response, next: NextFunction ) => {
+  throw new BadRequestException("This is test error");
   res.status(HTTPSTATUS.OK).json({
     message: "Hello SUbscribe ",
   });
-}
+})
 );
 
 app.use(errorHandler)
 
-app.listen(Env.PORT, () => {
+app.listen(Env.PORT, async () => {
+  await connectDatabase();
   console.log(`Server is running on port ${Env.PORT} in ${Env.NODE_ENV} mode`);
 });
 
