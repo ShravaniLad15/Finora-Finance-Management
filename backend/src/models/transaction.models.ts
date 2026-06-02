@@ -8,7 +8,7 @@ export enum TransactionStatusEnum{
 }
 
 export enum RecurringIntervalEnum {
-  DEAILY = "DAILY",
+  DAILY = "DAILY",
   WEEKLY = "WEEKLY",
   MONTHLY = "MONTHLY",
   YEARLY = "YEARLY",
