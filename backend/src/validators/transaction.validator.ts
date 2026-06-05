@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { PaymentMethodEnum, RecurringIntervalEnum, TransactionTypeEnum } from "../models/transaction.models";
 
-
+export const transactionIdSchema = z.string().trim().min(1);
 
 export const baseTransactionSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -15,6 +15,7 @@ export const baseTransactionSchema = z.object({
   date: z
   .union([z.string().datetime({ message: "Invalid date string" }), z.date()])
   .transform((val) => new Date(val)),
+  description: z.string().optional(),
   isRecurring: z.boolean().default(false),
   recurringInterval: z.enum([
     RecurringIntervalEnum.DAILY,
@@ -35,7 +36,14 @@ export const baseTransactionSchema = z.object({
 
 export const createTransactionSchema = baseTransactionSchema;
 export const updateTransactionSchema = baseTransactionSchema.partial();
+export const bulkDeleteTransactionSchema = z.object({
+  transactionIds: z
+    .array(z.string().length(24,"Invalid transaction ID format"))
+    .min(1,"At least one transaction ID must be provided"),
+})
 
 export type CreateTransactionType = z.infer<typeof createTransactionSchema>;
 
 export type UpdateTransactionType = z.infer<typeof updateTransactionSchema>;
+
+export type bulkDeleteTransactionType = z.infer<typeof bulkDeleteTransactionSchema >;
