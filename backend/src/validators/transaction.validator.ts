@@ -40,7 +40,24 @@ export const bulkDeleteTransactionSchema = z.object({
   transactionIds: z
     .array(z.string().length(24,"Invalid transaction ID format"))
     .min(1,"At least one transaction ID must be provided"),
-})
+});
+
+export const bulkTransactionSchema = z.object({
+  transactions: z
+    .array(baseTransactionSchema)
+    .min(1,"At least one transaction is required")
+    .max(300,"Must not be more than 300 transactions")
+    .refine(
+      (txs) => 
+        txs.every((tx) => {
+          const amount = Number(tx.amount);
+          return !isNaN(amount) && amount>0 && amount <= 1000_000_000;
+      }),
+      {
+        message: "Amount must be a positive number",
+      }
+    ),
+});
 
 export type CreateTransactionType = z.infer<typeof createTransactionSchema>;
 
