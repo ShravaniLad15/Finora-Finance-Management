@@ -18,7 +18,7 @@ const scheduleJob = (name: string, time: string, job: Function) => {
 
 export const startJobs = () => {
   return[
-    scheduleJob("Transactions", "*/1 * * * *", processRecurringTransactions),
+    scheduleJob("Transactions", "5 0 * * *", processRecurringTransactions),
   ]
 };
 

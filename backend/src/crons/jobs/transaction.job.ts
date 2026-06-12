@@ -35,6 +35,8 @@ export const processRecurringTransactions = async() => {
               nextRecurringDate: null,
               recurringInterval: null,
               lastProcessed: null,
+              createdAt: undefined,
+              updatedAt: undefined,
 
           },
         ],{ session }
