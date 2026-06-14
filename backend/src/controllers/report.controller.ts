@@ -1,7 +1,7 @@
 import { HTTPSTATUS } from "../config/http.config";
 import { asyncHandler } from "../middleware/asyncHandler.middleware";
 import { Request, Response } from "express";
-import { getAllReportsService, updateReportSettingService } from "../services/report.services";
+import { generateReportService, getAllReportsService, updateReportSettingService } from "../services/report.services";
 import { updateReportSettingSchema } from "../validators/report.validator";
 
 
@@ -39,3 +39,18 @@ export const updateReportSettingController = asyncHandler(
     })
     
   })
+
+export const generateReportController = asyncHandler(
+  async(req: Request, res: Response) => {
+    const userId = req.user?._id;
+    const { from, to } = req.query;
+    const fromDate = new Date(from as string);
+    const toDate = new Date( to as string)
+
+    await generateReportService(userId, fromDate, toDate);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Report generated successfully",
+    });
+
+    });

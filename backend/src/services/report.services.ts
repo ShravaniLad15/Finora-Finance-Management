@@ -1,8 +1,12 @@
+import mongoose from "mongoose";
 import ReportSettingModel from "../models/report-setting.models";
 import ReportModel from "../models/report.models";
+import TransactionModel, { TransactionTypeEnum } from "../models/transaction.models";
 import { NotFoundException } from "../utils/app-error";
 import { calculateNextReportDate } from "../utils/helper";
 import { UpdateReportSettingType } from "../validators/report.validator";
+import { convertToRupee } from "../utils/format-currency";
+import { format } from "date-fns";
 
 
 export const getAllReportsService = async(
@@ -68,3 +72,107 @@ export const updateReportSettingService = async(
 
   await existingReportSetting.save();
 }
+
+export const generateReportService = async(
+  userId: string,
+  fromDate: Date,
+  toDate: Date
+) => {
+  const results = await TransactionModel.aggregate([
+    {
+    $match: {
+      userId: new mongoose.Types.ObjectId(userId),
+      date: {$gte: fromDate, $lte: toDate},
+    }, 
+  }, {
+    $facet: {
+      summary: [
+        {
+          $group: {
+            _id: null,
+            totalIncome: {
+              $sum: {
+                $cond: [
+                  {$eq: ["$type", TransactionTypeEnum.INCOME]},
+                  {$abs: "$amount"},
+                  0,
+                ]
+              },
+            },
+
+            totalExpenses: {
+              $sum: {
+                $cond: [
+                  {$eq: ["$type", TransactionTypeEnum.EXPENSE]},
+                  {$abs: "$amount"},
+                  0,
+                ]
+              },
+
+            }
+
+          },
+        }
+      ],
+
+      categories: [
+        {
+          $match: { type: TransactionTypeEnum.EXPENSE },
+        },
+        {
+          $group: {
+            _id: "$category",
+            total: {$sum: { $abs: "$amount"}},
+          }
+        },{
+          $sort: { total: -1 },
+        },
+        {
+          $limit: 5,
+        }
+      ]
+      }
+
+    },{
+      $project: {
+        totalIncome: {$arrayElemAt: ["$summary.totalIncome", 0]},
+        totalExpense: {$arrayElemAt: ["$summary.totalExpenses", 0]},
+        categories: 1,
+      }
+    }
+  ]);
+
+  if(!results?.length || (results[0]?.totalIncome === 0 && results[0]?.totalExpenses=== 0)) return null;
+
+  const { totalIncome = 0,
+    totalExpenses = 0,
+    categories = []
+   } = results[0] || {};
+
+   const byCategory = categories.reduce(
+    (acc: any, {_id, total}: any) => {
+      acc[_id] = {
+        amount: convertToRupee(total),
+        percentage: totalExpenses> 0? Math.round(total / totalExpenses) * 100 : 0
+      };
+      return acc;
+    }, {} as Record<string, {amount: number; percentage: number}>
+   ); 
+
+
+   const availableBalance = totalIncome - totalExpenses;
+   const savingRate = calculateSavingRate(totalIncome, totalExpenses)
+
+   const periodLabel = `${format(fromDate, "MMMM D")} - ${format(toDate, "d yyyy")}`
+
+   return {};
+  
+  };
+ 
+
+    function calculateSavingRate(totalIncome: number, totalExpenses: number) {
+      if(totalIncome <= 0 ) return 0;
+      const savingRate = ((totalIncome - totalExpenses) / totalIncome) * 100;
+      return parseFloat(savingRate.toFixed(2));
+    }
+
