@@ -7,6 +7,9 @@ import { calculateNextReportDate } from "../utils/helper";
 import { UpdateReportSettingType } from "../validators/report.validator";
 import { convertToRupee } from "../utils/format-currency";
 import { format } from "date-fns";
+import { genAI, genAIModel } from "../config/google-ai.config";
+import { createUserContent } from "@google/genai";
+import { reportInsightPrompt } from "../utils/prompt";
 
 
 export const getAllReportsService = async(
@@ -80,11 +83,12 @@ export const generateReportService = async(
 ) => {
   const results = await TransactionModel.aggregate([
     {
-    $match: {
-      userId: new mongoose.Types.ObjectId(userId),
-      date: {$gte: fromDate, $lte: toDate},
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        date: {$gte: fromDate, $lte: toDate},
     }, 
-  }, {
+  }, 
+  {
     $facet: {
       summary: [
         {
@@ -99,7 +103,6 @@ export const generateReportService = async(
                 ]
               },
             },
-
             totalExpenses: {
               $sum: {
                 $cond: [
@@ -123,23 +126,23 @@ export const generateReportService = async(
           $group: {
             _id: "$category",
             total: {$sum: { $abs: "$amount"}},
-          }
+          },
         },{
           $sort: { total: -1 },
         },
         {
           $limit: 5,
-        }
-      ]
-      }
+        },
+      ],
+      },
 
     },{
       $project: {
         totalIncome: {$arrayElemAt: ["$summary.totalIncome", 0]},
-        totalExpense: {$arrayElemAt: ["$summary.totalExpenses", 0]},
+        totalExpenses: {$arrayElemAt: ["$summary.totalExpenses", 0]},
         categories: 1,
-      }
-    }
+      },
+    },
   ]);
 
   if(!results?.length || (results[0]?.totalIncome === 0 && results[0]?.totalExpenses=== 0)) return null;
@@ -149,11 +152,13 @@ export const generateReportService = async(
     categories = []
    } = results[0] || {};
 
+   console.log(results[0], "results");
+
    const byCategory = categories.reduce(
     (acc: any, {_id, total}: any) => {
       acc[_id] = {
         amount: convertToRupee(total),
-        percentage: totalExpenses> 0? Math.round(total / totalExpenses) * 100 : 0
+        percentage: totalExpenses> 0 ? Math.round((total / totalExpenses) * 100) : 0
       };
       return acc;
     }, {} as Record<string, {amount: number; percentage: number}>
@@ -163,11 +168,78 @@ export const generateReportService = async(
    const availableBalance = totalIncome - totalExpenses;
    const savingRate = calculateSavingRate(totalIncome, totalExpenses)
 
-   const periodLabel = `${format(fromDate, "MMMM D")} - ${format(toDate, "d yyyy")}`
+   const periodLabel = `${format(fromDate, "MMMM d")} - ${format(toDate, "d, yyyy")}`;
 
-   return {};
+   const insights = await generateInsightsAI({
+    totalIncome,
+    totalExpenses,
+    availableBalance,
+    savingRate,
+    categories: byCategory,
+    periodLabel: periodLabel,
+   }) 
+
+   return {
+    period: periodLabel,
+    summary:{
+      income: convertToRupee(totalIncome),
+      expenses: convertToRupee(totalExpenses),
+      balance: convertToRupee(availableBalance),
+      savingRate: Number(savingRate.toFixed(1)),
+      topCategories: Object.entries(byCategory)?.map(([name, cat]: any) => ({
+        name,
+        amount: cat.amount,
+        percent: cat.percentage,
+      })),
+    },
+    insights,
+   };
   
   };
+
+  async function generateInsightsAI({
+    totalIncome,
+    totalExpenses,
+    availableBalance,
+    savingRate,
+    categories,
+    periodLabel
+  }:{
+    totalIncome: number;
+    totalExpenses: number;
+    availableBalance: number;
+    savingRate: number;
+    categories: Record<string, {amount: number; percentage: number}>;
+    periodLabel: string;
+  }) {
+    try{
+      const prompt = reportInsightPrompt({
+        totalIncome: convertToRupee(totalIncome),
+        totalExpenses: convertToRupee(totalExpenses),
+        availableBalance: convertToRupee(availableBalance),
+        savingRate: Number(savingRate.toFixed(1)),
+        categories,
+        periodLabel
+      })
+      const result = await genAI.models.generateContent({
+        model: genAIModel,
+        contents: [createUserContent([prompt])],
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
+
+      const response = result.text;
+      console.log(response);
+      const cleanedText = response?.replace(/```(?:json)?\n?/g, "").trim();
+
+      if(!cleanedText) return [];
+      const data = JSON.parse(cleanedText);
+      return data;
+    }catch(error){
+      return [];
+    }
+  }
  
 
     function calculateSavingRate(totalIncome: number, totalExpenses: number) {

@@ -47,10 +47,11 @@ export const generateReportController = asyncHandler(
     const fromDate = new Date(from as string);
     const toDate = new Date( to as string)
 
-    await generateReportService(userId, fromDate, toDate);
+    const result = await generateReportService(userId, fromDate, toDate);
 
     return res.status(HTTPSTATUS.OK).json({
       message: "Report generated successfully",
+      ...result,
     });
 
     });
