@@ -1,12 +1,19 @@
-import { endOfMonth, startOfMonth, subMonths } from "date-fns";
+import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import ReportSettingModel from "../../models/report-setting.models";
 import { UserDocument } from "../../models/user.models";
 import mongoose from "mongoose";
 import { generateReportService } from "../../services/report.services";
+import ReportModel, { ReportStatusEnum } from "../../models/report.models";
+import { calculateNextReportDate } from "../../utils/helper";
+import { sendReportEmail } from "../../mailers/report.mailer";
 
 export const processReportJob = async() => {
   const now = new Date();
-  //july 1, june 1- jun 30
+
+  let processedCount = 0;
+  let failedCount = 0;
+
+  //june 1, may 1- may 30
   const from = startOfMonth(subMonths(now,1))
   const to = endOfMonth(subMonths(now,1))
 
@@ -32,10 +39,27 @@ export const processReportJob = async() => {
       try{
         const report = await generateReportService(user.id, from, to);
 
+        console.log(report, "report data");
+
         let emailSent = false;
         if(report){
           try {
-            // Send Email
+            await sendReportEmail({
+              email: user.email!,
+              username: user.name,
+              report: {
+                period: report.period,
+                totalIncome: report.summary.income,
+                totalExpenses: report.summary.expenses,
+                availableBalance: report.summary.balance,
+                savingRate: report.summary.savingRate,
+                topSpendingCategories: report.summary.topCategories,
+                insights: report.insights,
+              },
+              frequency: setting.frequency,
+
+            });
+
             emailSent = true;
           }catch(error){
             console.log(`Email failed for ${user.id}`);
@@ -44,15 +68,95 @@ export const processReportJob = async() => {
 
         await session.withTransaction(async() => {
           const bulkReports: any[] = []
-          const bulkSetting: any[] = []
-        })
+          const bulkSettings: any[] = []
+
+          if(report && emailSent) {
+            bulkReports.push({
+              insertOne: {
+                document: {
+                  userId: user.id,
+                  sentDate: now,
+                  period: report.period,
+                  status: ReportStatusEnum.SENT,
+                  createdAt: now,
+                  updatedAt: now,
+                },
+              },
+            });
+
+            bulkSettings.push({
+              updateOne: {
+                filter: {_id: setting._id},
+                update: {
+                  $set: {
+                    lastSentDate: now,
+                    nextReportDate: calculateNextReportDate(now),
+                    updatedAt: now,
+                  },
+                },
+              },
+        });
+      } else{
+        bulkReports.push({
+              insertOne: {
+                document: {
+                  userId: user.id,
+                  sentDate: now,
+                  period: report?.period || `${format(from,"MMMM-d")}-${format(to,"d, yyyy")}`,
+                  status: report
+                  ? ReportStatusEnum.FAILED
+                  : ReportStatusEnum.NO_ACTIVITY,
+                  createdAt: now,
+                  updatedAt: now,
+                },
+              },
+            });
+
+            bulkSettings.push({
+              updateOne: {
+                filter: {_id: setting._id},
+                update: {
+                  $set: {
+                    lastSentDate: null,
+                    nextReportDate: calculateNextReportDate(now),
+                    updatedAt: now,
+                  },
+                },
+              },
+        });
+      }
+      await Promise.all([
+      ReportModel.bulkWrite(bulkReports, { ordered: false }),
+      ReportSettingModel.bulkWrite(bulkSettings, { ordered: false }),
+    ])
+    }, {
+      maxCommitTimeMS: 10000,
+    });
+
+    processedCount++;
 
       }catch(error){
+        console.log(`Failed to process report`, error)
+        failedCount++;
 
+      } finally{
+        await session.endSession();
       }
     }
 
-  }catch(error){
+    console.log(`Processed: ${processedCount} report`);
+    console.log(`Failed: ${failedCount} report`);
 
+    return {
+      success: true,
+      processedCount,
+      failedCount,
+    };
+  }catch(error){
+    console.error("Error processing report", error);
+    return {
+      success: false,
+      error: "Report processing failed",
+    }
   }
-}
+};

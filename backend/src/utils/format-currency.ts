@@ -6,3 +6,10 @@ export function convertToPaise(amount: number) {
 export function convertToRupee(amount: number) {
   return amount / 100;
 }
+
+export function formatCurrency(amount: number){
+  return new Intl.NumberFormat('en-IN',{
+    style: 'currency',
+    currency: 'INR',
+  }).format(amount);
+}
