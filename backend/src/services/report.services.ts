@@ -230,7 +230,6 @@ export const generateReportService = async(
       });
 
       const response = result.text;
-      console.log(response);
       const cleanedText = response?.replace(/```(?:json)?\n?/g, "").trim();
 
       if(!cleanedText) return [];
