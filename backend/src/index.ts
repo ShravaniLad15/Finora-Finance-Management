@@ -49,6 +49,7 @@ app.use(`${BASE_PATH}/report`,passportAuthenticateJwt, reportRoutes);
 app.use(errorHandler);
 
 
+
 app.listen(Env.PORT, async () => {
   await connectDatabase();
   if(Env.NODE_ENV === "development"){

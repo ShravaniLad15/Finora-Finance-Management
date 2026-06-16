@@ -1,4 +1,4 @@
-import { endOfDay, startOfMonth, subDays, subMonths } from "date-fns";
+import { endOfDay, endOfMonth, endOfYear, startOfMonth, startOfYear, subDays, subMonths, subYears } from "date-fns";
 import { DateRangeEnum, DateRangePreset } from "../enums/date-range.enum";
 
 export const getDateRange = (
@@ -22,12 +22,11 @@ export const getDateRange = (
     value: DateRangeEnum.LAST_30_DAYS,
     label: "Last 30 Days",
   };
-  console.log(last30Days,"Last 30 Days" );
 
   switch(preset){
     case DateRangeEnum.ALL_TIME:
       return {
-        from: null, 
+        from: null,
         to: null,
         value: DateRangeEnum.ALL_TIME,
         label: "All Time",
@@ -37,51 +36,39 @@ export const getDateRange = (
     case DateRangeEnum.LAST_MONTH:
       return {
         from: startOfMonth(subMonths(now, 1)),
-        to: startOfMonth(now),
+        to: endOfMonth(subMonths(now, 1)),
         value: DateRangeEnum.LAST_MONTH,
-        label:"Last Month"
-      }
-      case DateRangeEnum.THIS_MONTH:
+        label: "Last Month",
+      };
+    case DateRangeEnum.LAST_3_MONTHS:
+      return {
+        from: startOfMonth(subMonths(now, 3)),
+        to: endOfMonth(subMonths(now, 1)),
+        value: DateRangeEnum.LAST_3_MONTHS,
+        label: "Last 3 Months",
+      };
+    case DateRangeEnum.LAST_YEAR:
+      return {
+        from: startOfYear(subYears(now, 1)),
+        to: endOfYear(subYears(now, 1)),
+        value: DateRangeEnum.LAST_YEAR,
+        label: "Last Year",
+      };
+    case DateRangeEnum.THIS_MONTH:
       return {
         from: startOfMonth(now),
         to: endOfDay(now),
         value: DateRangeEnum.THIS_MONTH,
-        label:"This Month"
-      }
-      // case DateRangeEnum.LAST_3_MONTHS:
-      // return {
-      //   from: startOfMonth(subMonths(now, 1)),
-      //   to: startOfMonth(now),
-      //   value: DateRangeEnum.LAST_MONTH,
-      //   label:"Last Month"
-      // }
-      // case DateRangeEnum.THIS_YEAR:
-      // return {
-      //   from: startOfMonth(subMonths(now, 1)),
-      //   to: startOfMonth(now),
-      //   value: DateRangeEnum.LAST_MONTH,
-      //   label:"Last Month"
-      // }
-      // case DateRangeEnum.LAST_YEAR:
-      // return {
-      //   from: startOfMonth(subMonths(now, 1)),
-      //   to: startOfMonth(now),
-      //   value: DateRangeEnum.LAST_MONTH,
-      //   label:"Last Month"
-      // }
-      // case DateRangeEnum.CUSTOM:
-      // return {
-      //   from: startOfMonth(subMonths(now, 1)),
-      //   to: startOfMonth(now),
-      //   value: DateRangeEnum.LAST_MONTH,
-      //   label:"Last Month"
-      // }
-      // case DateRangeEnum.LAST_MONTH:
-      // return {
-      //   from: startOfMonth(subMonths(now, 1)),
-      //   to: startOfMonth(now),
-      //   value: DateRangeEnum.LAST_MONTH,
-      //   label:"Last Month"
-      // }
+        label: "This Month",
+      };
+    case DateRangeEnum.THIS_YEAR:
+      return {
+        from: startOfYear(now),
+        to: endOfDay(now),
+        value: DateRangeEnum.THIS_YEAR,
+        label: "This Year",
+      };
+    default:
+      return last30Days;
   }
-}
+};
