@@ -3,6 +3,7 @@ import { DateRangeEnum, DateRangePreset } from "../enums/date-range.enum";
 import { getDateRange } from "../utils/date";
 import TransactionModel, { TransactionTypeEnum } from "../models/transaction.models";
 import { differenceInDays, subDays, subYears } from "date-fns";
+import { convertToRupee } from "../utils/format-currency";
 
 export const summaryAnalyticsService = async(
   userId: string,
@@ -107,11 +108,13 @@ export const summaryAnalyticsService = async(
     totalExpenses = 0,
     availableBalance = 0,
     transactionCount = 0,
-    savingsData = {
+    savingData = {
       expenseRatio : 0,
       savingsPercentage: 0,
     },
   } = current || {};
+
+  // console.log(current, "current")
 
   let percentageChange: any = {
     income: 0,
@@ -119,19 +122,127 @@ export const summaryAnalyticsService = async(
     balance: 0,
     prevPeriodFrom: null,
     prevPeriodTo: null,
-    previousValues: {}
+    previousValues: {
+      incomeAmount: 0,
+      expenseAmount: 0,
+      balanceAmount: 0
+    },
   };
 
   if(from && to && rangeValue !== DateRangeEnum.ALL_TIME){
     //last 30 days previous last 30 days    
     const period = differenceInDays(to, from) + 1;
+
+    console.log(`${differenceInDays(to, from)} diff in days, ${period} period`)
+
     const isYearly = [
       DateRangeEnum.LAST_YEAR,
       DateRangeEnum.THIS_YEAR,
     ].includes(rangeValue);
 
-    const prevPeriodFrom = isYearly ? subYears(from, 1)
+    const prevPeriodFrom = isYearly ? subYears(from, 1): subDays(from, period)
+
+    const prevPeriodTo = isYearly ? subYears(to, 1): subDays(to, period)
+
+    console.log(prevPeriodFrom, prevPeriodTo, "Prev period")
+
+    const prevPeriodPipeline = [
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+            date: {
+              $gte: prevPeriodFrom,
+              $lte: prevPeriodTo,
+            },
+          
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalIncome: {
+            $sum: {
+              $cond: [
+                { $eq: ["$type", TransactionTypeEnum.INCOME] },
+                { $abs: "$amount" },
+                0,
+              ],
+            },
+          },
+          totalExpenses: {
+            $sum: {
+              $cond: [
+                { $eq: ["$type", TransactionTypeEnum.EXPENSE] },
+                { $abs: "$amount" },
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]
+
+    const [previous] = await TransactionModel.aggregate(prevPeriodPipeline);
+
+    console.log(previous,"Previous Data")
+
+    if(previous){
+      const prevIncome = previous.totalIncome || 0;
+      const prevExpenses = previous.totalExpenses || 0;
+      const prevBalance = prevIncome - prevExpenses;
+
+      const currentIncome = totalIncome;
+      const currentExpenses = totalExpenses;
+      const currentBalance = availableBalance;
+
+      percentageChange = {
+        income: calculatePercentageChange(prevIncome, currentIncome),
+        expenses: calculatePercentageChange(prevExpenses, currentExpenses),
+        balance: calculatePercentageChange(prevBalance,currentBalance),
+        prevPeriodFrom: prevPeriodFrom,
+        prevPeriodTo: prevPeriodTo,
+        previousValues: {
+        incomeAmount: prevIncome,
+        expenseAmount: prevExpenses,
+        balanceAmount: prevBalance,
+    },
+      };
+
+    }
+
+  }
+  return {
+    availableBalance: convertToRupee(availableBalance),
+    totalIncome: convertToRupee(totalIncome),
+    totalExpenses: convertToRupee(totalExpenses),
+    savingRate: {
+      percentage: parseFloat(savingData.savingsPercentage.toFixed(2)),
+      expenseRatio: parseFloat(savingData.expenseRatio.toFixed(2))
+    },
+    transactionCount,
+    percentageChange: {
+    ...percentageChange,
+    previousValues: {
+      incomeAmount: convertToRupee(percentageChange.previousValues.incomeAmount),
+      expenseAmount: convertToRupee(percentageChange.previousValues.expenseAmount),
+      balanceAmount: convertToRupee(percentageChange.previousValues.balanceAmount),
+    }
+  },
+  preset: {
+    ...range,
+    value: rangeValue || DateRangeEnum.ALL_TIME,
+    label: range?.label || "All Time"
+  }
+
+
 
   }
 
-};
+}
+function calculatePercentageChange(previous: number, current: number){
+  if(previous === 0) return current === 0 ? 0 : 100;
+  const changes = (((current - previous)/Math.abs(previous))*100);
+  const cappedChanges = Math.min(Math.max(changes, -100),100)
+  return parseFloat(cappedChanges.toFixed(2))
+
+}
