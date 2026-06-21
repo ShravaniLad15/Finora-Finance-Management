@@ -166,7 +166,7 @@ export const generateReportService = async(
 
 
    const availableBalance = totalIncome - totalExpenses;
-   const savingRate = calculateSavingRate(totalIncome, totalExpenses)
+   const savingsRate = calculateSavingRate(totalIncome, totalExpenses)
 
    const periodLabel = `${format(fromDate, "MMMM d")} - ${format(toDate, "d, yyyy")}`;
 
@@ -174,7 +174,7 @@ export const generateReportService = async(
     totalIncome,
     totalExpenses,
     availableBalance,
-    savingRate,
+    savingsRate,
     categories: byCategory,
     periodLabel: periodLabel,
    }) 
@@ -185,7 +185,7 @@ export const generateReportService = async(
       income: convertToRupee(totalIncome),
       expenses: convertToRupee(totalExpenses),
       balance: convertToRupee(availableBalance),
-      savingRate: Number(savingRate.toFixed(1)),
+      savingsRate: Number(savingsRate.toFixed(1)),
       topCategories: Object.entries(byCategory)?.map(([name, cat]: any) => ({
         name,
         amount: cat.amount,
@@ -201,14 +201,14 @@ export const generateReportService = async(
     totalIncome,
     totalExpenses,
     availableBalance,
-    savingRate,
+    savingsRate,
     categories,
     periodLabel
   }:{
     totalIncome: number;
     totalExpenses: number;
     availableBalance: number;
-    savingRate: number;
+    savingsRate: number;
     categories: Record<string, {amount: number; percentage: number}>;
     periodLabel: string;
   }) {
@@ -217,7 +217,7 @@ export const generateReportService = async(
         totalIncome: convertToRupee(totalIncome),
         totalExpenses: convertToRupee(totalExpenses),
         availableBalance: convertToRupee(availableBalance),
-        savingRate: Number(savingRate.toFixed(1)),
+        savingsRate: Number(savingsRate.toFixed(1)),
         categories,
         periodLabel
       })
@@ -243,7 +243,7 @@ export const generateReportService = async(
 
     function calculateSavingRate(totalIncome: number, totalExpenses: number) {
       if(totalIncome <= 0 ) return 0;
-      const savingRate = ((totalIncome - totalExpenses) / totalIncome) * 100;
-      return parseFloat(savingRate.toFixed(2));
+      const savingsRate = ((totalIncome - totalExpenses) / totalIncome) * 100;
+      return parseFloat(savingsRate.toFixed(2));
     }
 

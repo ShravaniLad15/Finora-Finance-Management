@@ -3,7 +3,7 @@ export type ReportType = {
   totalIncome: number;
   totalExpenses: number;
   availableBalance: number;
-  savingRate: number;
+  savingsRate: number;
   topSpendingCategories: Array<{name: string; percent: number}>;
   insights: string[];
 }

@@ -215,7 +215,7 @@ export const summaryAnalyticsService = async(
     availableBalance: convertToRupee(availableBalance),
     totalIncome: convertToRupee(totalIncome),
     totalExpenses: convertToRupee(totalExpenses),
-    savingRate: {
+    savingsRate: {
       percentage: parseFloat(savingData.savingsPercentage.toFixed(2)),
       expenseRatio: parseFloat(savingData.expenseRatio.toFixed(2))
     },

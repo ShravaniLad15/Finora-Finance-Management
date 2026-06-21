@@ -52,7 +52,7 @@ export const processReportJob = async() => {
                 totalIncome: report.summary.income,
                 totalExpenses: report.summary.expenses,
                 availableBalance: report.summary.balance,
-                savingRate: report.summary.savingRate,
+                savingsRate: report.summary.savingsRate,
                 topSpendingCategories: report.summary.topCategories,
                 insights: report.insights,
               },

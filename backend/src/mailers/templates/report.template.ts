@@ -13,7 +13,7 @@ export const getReportEmailTemplate = (
     totalIncome,
     totalExpenses,
     availableBalance,
-    savingRate,
+    savingsRate,
     topSpendingCategories,
     insights
   } = reportData;
@@ -66,7 +66,7 @@ export const getReportEmailTemplate = (
                    </tr>
                    <tr>
                      <td style="padding: 8px 0; font-size: 16px;"><strong>Savings Rate:</strong></td>
-                     <td style="text-align: right; font-size: 16px;">${savingRate.toFixed(2)}%</td>
+                     <td style="text-align: right; font-size: 16px;">${savingsRate.toFixed(2)}%</td>
                    </tr>
                  </table>
                  <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;" />
