@@ -34,12 +34,14 @@ app.use(
 
 app.get("/",
   asyncHandler(async (req: Request, res: Response, next: NextFunction ) => {
-  throw new BadRequestException("This is test error");
-  res.status(HTTPSTATUS.OK).json({
-    message: "Hello SUbscribe ",
-  });
+  //throw new BadRequestException("This is test error");
+  res.status(200).json({
+    success: true,
+    message: "Finora Backend Running"
+});
 })
 );
+
  
 
 app.use(`${BASE_PATH}/auth`, authRoutes);
