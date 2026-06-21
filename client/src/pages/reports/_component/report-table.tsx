@@ -1,5 +1,4 @@
 import { DataTable } from '@/components/data-table'
-import { REPORT_DATA } from './data'
 import { reportColumns } from './column'
 import { useState } from 'react'
 import { useGetAllReportsQuery } from '@/features/report/reportAPI'
