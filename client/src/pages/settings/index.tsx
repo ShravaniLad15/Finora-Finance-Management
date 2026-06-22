@@ -24,7 +24,7 @@ const sidebarNavItems = [
   return (
     <PageLayout
       title="Settings"
-      subtitle="Manage your account settings and set e-mail preferences."
+      subtitle="Manage your account settings."
       addMarginTop
     >
     <Card className="border shadow-none">
